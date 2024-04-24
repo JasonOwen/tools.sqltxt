@@ -8,7 +8,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func loadDatatableIntoSQL(dt dataTable, tempDBfile string) (bool, *sql.DB) {
+func loadDatatableIntoSQL(dt dataTable, tempDBfile, tableName string) (bool, *sql.DB) {
 	//Load database file
 	database, err := sql.Open("sqlite3", tempDBfile)
 
@@ -27,7 +27,7 @@ func loadDatatableIntoSQL(dt dataTable, tempDBfile string) (bool, *sql.DB) {
 		}
 		strColumnsUpdate = fmt.Sprintf("%s%s", strColumnsUpdate, strColName)
 	}
-	sqlCreateTable := fmt.Sprintf(`CREATE TABLE tbl (ID INTEGER PRIMARY KEY AUTOINCREMENT%s);`, strColumnsCreate)
+	sqlCreateTable := fmt.Sprintf(`CREATE TABLE %s (ID INTEGER PRIMARY KEY AUTOINCREMENT%s);`, tableName, strColumnsCreate)
 	// fmt.Println(sqlCreateTable)
 	_, err = database.Exec(sqlCreateTable)
 	if err != nil {
@@ -52,7 +52,7 @@ func loadDatatableIntoSQL(dt dataTable, tempDBfile string) (bool, *sql.DB) {
 		strInsertValues += strAddLine
 	}
 	if strings.Trim(strInsertValues, ` `) != "" {
-		strInsertQuery := fmt.Sprintf("INSERT INTO tbl (%s) VALUES %s;", strColumnsUpdate, strInsertValues)
+		strInsertQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s;", tableName, strColumnsUpdate, strInsertValues)
 		_, err = database.Exec(strInsertQuery)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("sql.UpdateRows Error : %s\n%s", err, strInsertQuery))

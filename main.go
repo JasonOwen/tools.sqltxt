@@ -7,8 +7,8 @@ import (
 	"os"
 )
 
-var inputFile, delimiterString, regexString, columnHeadersCSV, queryString, loadParser, loadSQL, saveParser, saveSQL, outputMode, outputFile string
-var delimiterMethod, regexMethod, firstLineColumnHeaders, verboseMade, printPresets, boolExport, boolSilent bool
+var inputFile, delimiterString, regexString, columnHeadersCSV, queryString, loadParser, loadSQL, saveParser, saveSQL, outputMode, outputFile, tmpFilePrep string
+var delimiterMethod, regexMethod, firstLineColumnHeaders, verboseMade, printPresets, boolExport, boolSilent, boolKeep bool
 var presets presetsObject
 var userDataDirectory = "~/.local/share/sqltxt.conf"
 
@@ -16,7 +16,7 @@ func init() {
 	//Read in Parameters
 	flag.BoolVar(&delimiterMethod, "d", true, "Use Delimiter Method")
 	flag.BoolVar(&regexMethod, "r", false, "Use Regular Expression Extraction Method")
-	flag.StringVar(&inputFile, "i", "", "Input text file")
+	flag.StringVar(&inputFile, "i", "", "Input text file, prepend <tablename>;/filepath, e.g. tbl2;testfile.csv")
 	flag.StringVar(&delimiterString, "ds", "[\\s,\\t]", "Delimiter Seperation String/Character")
 	flag.StringVar(&regexString, "rs", "", "Regular Expression Extraction String")
 	flag.BoolVar(&firstLineColumnHeaders, "f", false, "Use first line as Column Headers")
@@ -32,6 +32,8 @@ func init() {
 	flag.BoolVar(&boolExport, "x", false, "Export Output")
 	flag.StringVar(&outputFile, "xfile", "", "Export Filename")
 	flag.StringVar(&outputMode, "xmode", "csv", "Export type (csv)")
+	flag.StringVar(&tmpFilePrep, "tmpfile", "", "Temp filename and path (optional)")
+	flag.BoolVar(&boolKeep, "keep", false, "Setting will not dispose of the temporary sql database file")
 
 	flag.Parse()
 
@@ -51,7 +53,9 @@ func main() {
 		printPresetsDisplay()
 	} else {
 		// Check if any piped in data or file contents if specified
-		readInString := getFeedInString(inputFile)
+		tableName := getTableNameFromFeedIn(inputFile)
+		fileName := getFileNameFromFeedIn(inputFile)
+		readInString := getFeedInString(fileName)
 
 		//Split readInString into an arrayed map
 		blankDataTable := loadDataBlock(readInString)
@@ -65,10 +69,17 @@ func main() {
 			fmt.Println("Error creating temporary database")
 			return
 		}
-		defer os.Remove(tmpFile.Name())
+		if tmpFilePrep != "" {
+			os.Remove(tmpFile.Name())
+			tmpFile, err = os.OpenFile(tmpFilePrep, os.O_CREATE|os.O_APPEND, 0644)
+			if err != nil {
+				fmt.Println("Error creating temporary database")
+				return
+			}
+		}
 
 		//Load data into a temporary database
-		successfulCreation, tmpDB := loadDatatableIntoSQL(DataTable, tmpFile.Name())
+		successfulCreation, tmpDB := loadDatatableIntoSQL(DataTable, tmpFile.Name(), tableName)
 
 		//If successful query the data
 		if successfulCreation {
@@ -89,6 +100,13 @@ func main() {
 		savePresetData()
 
 		//Clean up
+		if !boolKeep {
+			defer os.Remove(tmpFile.Name())
+		} else {
+			if !boolSilent {
+				fmt.Println(tmpFile.Name())
+			}
+		}
 		tmpDB.Close()
 	}
 }

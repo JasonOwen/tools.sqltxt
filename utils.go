@@ -4,7 +4,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 )
+
+func getTableNameFromFeedIn(fileInName string) string {
+	if strings.Contains(fileInName, ";") {
+		tmpDBName := strings.Split(fileInName, ";")[0]
+		if len(tmpDBName) > 0 {
+			return tmpDBName
+		}
+	}
+	return "tbl"
+}
+
+func getFileNameFromFeedIn(fileInName string) string {
+	if strings.Contains(fileInName, ";") {
+		return strings.Split(fileInName, ";")[1]
+	}
+	return fileInName
+}
 
 func getFeedInString(fileInName string) string {
 	readInString := ""
